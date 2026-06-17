@@ -1,0 +1,16 @@
+node_modules/
+web/dist/
+data/*.json
+cache/*
+!cache/.gitkeep
+.DS_Store
+*.log
+docker-compose.mounts.generated.yml
+colima-mounts.generated.sh
+
+# Machine-specific - which drives/folders to mount, varies per host.
+mounts.txt
+
+# Local-only tool state, not shared config.
+.claude/settings.local.json
+.claude/scheduled_tasks.lock

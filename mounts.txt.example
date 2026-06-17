@@ -1,0 +1,21 @@
+# One host path per line. Must be an absolute path to a folder that
+# already exists - typically an external/mounted drive, or a subfolder of
+# one. Add ":rw" for write access - only needed for folders where you want
+# the player's flip feature to be able to replace the original file;
+# everything else should stay read-only.
+#
+# Where drives show up depends on your OS:
+#   macOS:           /Volumes/<drive-name>/...
+#   Linux:           /media/<user>/<drive-name>/... or /mnt/<drive-name>/...
+#   Windows (WSL2):  /mnt/<drive-letter>/...
+#
+# Lines are mounted into the container at the same path under /media
+# (e.g. /Volumes/renegade -> /media/Volumes/renegade).
+#
+# After editing this file, just re-run ./start.sh - it regenerates the
+# Colima VM mounts and docker-compose volumes from this file automatically.
+#
+# Copy this file to mounts.txt and edit it for your own drives -
+# mounts.txt is gitignored since it's specific to this machine.
+
+/Volumes/your-drive/your-folder:rw
