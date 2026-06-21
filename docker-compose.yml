@@ -5,7 +5,7 @@ services:
     build: .
     container_name: tabseet-flex
     ports:
-      - "4400:4400"
+      - "127.0.0.1:4400:4400"
     volumes:
       # Media drive mounts are dynamic - see mounts.txt and
       # generate-mounts.sh. start.sh/stop.sh layer
