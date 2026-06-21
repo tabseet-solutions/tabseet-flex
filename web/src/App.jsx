@@ -91,6 +91,14 @@ export default function App() {
     pollFlips();
   }, [pollFlips]);
 
+  // Player/Settings/Duplicates all render as `fixed inset-0` overlays, which
+  // align to the layout viewport (inside the scrollbar gutter) rather than
+  // the window edge - so without this, the library's own scrollbar stays
+  // visible down the side even though the overlay covers everything else.
+  useEffect(() => {
+    document.body.style.overflow = player || settingsOpen || duplicatesOpen ? "hidden" : "";
+  }, [player, settingsOpen, duplicatesOpen]);
+
   useEffect(() => {
     const hasRunning = Object.values(activeFlips).some((j) => j.status === "running");
     if (!hasRunning) return;
