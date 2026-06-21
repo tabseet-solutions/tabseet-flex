@@ -20,8 +20,10 @@ import {
   discardFlip as apiDiscardFlip,
 } from "./api.js";
 import { pauseThumbnailLoading, resumeThumbnailLoading } from "./lib/thumbnailLoader.js";
+import { useTheme } from "./hooks/useTheme.js";
 
 export default function App() {
+  const [theme, toggleTheme] = useTheme();
   const [roots, setRoots] = useState([]);
   const [view, setView] = useState("folders");
   const [currentPath, setCurrentPath] = useState(null);
@@ -349,12 +351,14 @@ export default function App() {
         onDuplicates={() => setDuplicatesOpen(true)}
         view={view}
         onChangeView={changeView}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       <main ref={mainRef} className="flex-1 px-4 py-4">
         {view === "consolidated" ? (
           <>
-            {consolidatedError && <p className="text-red-400 text-sm my-2">{consolidatedError}</p>}
+            {consolidatedError && <p className="text-red-600 dark:text-red-400 text-sm my-2">{consolidatedError}</p>}
             {consolidatedLoading && <p className="text-gray-500 text-sm my-4">Loading…</p>}
             {!consolidatedLoading && consolidated && (
               consolidated.videos.length > 0 ? (
@@ -381,9 +385,9 @@ export default function App() {
             />
             <h2 className="text-lg font-semibold mb-2">Folders</h2>
             {roots.length === 0 ? (
-              <div className="text-gray-400 text-sm">
+              <div className="text-gray-500 dark:text-gray-400 text-sm">
                 No library folders yet.{" "}
-                <button className="text-accent-400 underline" onClick={() => setSettingsOpen(true)}>
+                <button className="text-primary-500 dark:text-primary-400 underline" onClick={() => setSettingsOpen(true)}>
                   Add one
                 </button>
                 .
@@ -403,7 +407,7 @@ export default function App() {
         ) : (
           <>
             <Breadcrumbs crumbs={dir?.breadcrumbs} onNavigate={openFolder} />
-            {error && <p className="text-red-400 text-sm my-2">{error}</p>}
+            {error && <p className="text-red-600 dark:text-red-400 text-sm my-2">{error}</p>}
             {loading && <p className="text-gray-500 text-sm my-4">Loading…</p>}
             {!loading && dir && (
               <>

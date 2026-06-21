@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: "class",
   content: ["./index.html", "./src/**/*.{js,jsx}"],
   theme: {
     extend: {
@@ -11,9 +12,13 @@ export default {
           700: "#27272e",
           600: "#3a3a44",
         },
-        accent: {
-          500: "#6366f1",
-          400: "#818cf8",
+        primary: {
+          500: "rgb(var(--color-primary-500) / <alpha-value>)",
+          400: "rgb(var(--color-primary-400) / <alpha-value>)",
+        },
+        secondary: {
+          500: "rgb(var(--color-secondary-500) / <alpha-value>)",
+          400: "rgb(var(--color-secondary-400) / <alpha-value>)",
         },
       },
     },

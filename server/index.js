@@ -1,7 +1,7 @@
 import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { ensureDefaultRoot, getRoots } from "./lib/library.js";
+import { getRoots } from "./lib/library.js";
 import { cleanupOrphanedFlips } from "./lib/media.js";
 import directoriesRouter from "./routes/directories.js";
 import browseRouter from "./routes/browse.js";
@@ -36,7 +36,6 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message });
 });
 
-await ensureDefaultRoot();
 await cleanupOrphanedFlips((await getRoots()).map((r) => r.path));
 
 app.listen(PORT, () => {

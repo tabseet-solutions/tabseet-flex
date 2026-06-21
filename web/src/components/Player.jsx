@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import Plyr from "plyr";
 import "plyr/dist/plyr.css";
+import {
+  XMarkIcon,
+  BackwardIcon,
+  ForwardIcon,
+  InformationCircleIcon,
+  TvIcon,
+  ArrowsRightLeftIcon,
+  QuestionMarkCircleIcon,
+} from "@heroicons/react/20/solid";
 import { streamUrl, flipPreviewUrl, setProgress } from "../api.js";
 import { formatDuration } from "../format.js";
 
@@ -8,6 +17,53 @@ const SPEED_STEPS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 const SEEK_PER_WHEEL_UNIT = 0.1; // seconds of seek per pixel of horizontal trackpad scroll
 const VOLUME_PER_WHEEL_UNIT = 0.0015; // volume (0-1) per pixel of vertical trackpad scroll
 const WHEEL_DEADZONE = 2; // ignore tiny/imprecise gestures
+
+// Each shortcut's keys are a list of alternative ways to trigger it (joined
+// with "or"), and each alternative is itself a list of keys pressed together
+// as a combo (joined with "+"). E.g. [["Shift", "←"]] is one combo; [["←"],
+// ["J"]] is two single-key alternatives.
+const SHORTCUT_GROUPS = [
+  {
+    title: "Playback",
+    items: [
+      [[["Space"], ["K"]], "Play / pause"],
+      [[["←"], ["J"]], "Seek back 10s"],
+      [[["→"], ["L"]], "Seek forward 10s"],
+      [[["Shift", "←"]], "Seek back 1s"],
+      [[["Shift", "→"]], "Seek forward 1s"],
+      [[["0-9"]], "Jump to 10% steps"],
+    ],
+  },
+  {
+    title: "Volume",
+    items: [
+      [[["↑"]], "Volume up"],
+      [[["↓"]], "Volume down"],
+      [[["M"]], "Mute"],
+    ],
+  },
+  {
+    title: "View",
+    items: [
+      [[["F"]], "Fullscreen"],
+      [[["T"]], "Theater mode"],
+      [[["P"]], "Picture-in-picture"],
+      [[["I"]], "File info"],
+    ],
+  },
+  {
+    title: "Other",
+    items: [
+      [[[","]], "Speed down"],
+      [[["."]], "Speed up"],
+      [[["["]], "Previous video"],
+      [[["]"]], "Next video"],
+      [[["H"]], "Flip horizontal"],
+      [[["Esc"]], "Close player"],
+      [[["?"]], "Toggle this panel"],
+    ],
+  },
+];
 
 export default function Player({ video, siblings, flipJob, onClose, onNavigate, onStartFlip, onKeepFlip, onDiscardFlip }) {
   const containerRef = useRef(null);
@@ -21,6 +77,8 @@ export default function Player({ video, siblings, flipJob, onClose, onNavigate, 
   const [hint, setHint] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [confirmFlipOpen, setConfirmFlipOpen] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [previewingFlip, setPreviewingFlip] = useState(false);
   const [errorDismissed, setErrorDismissed] = useState(false);
 
@@ -28,8 +86,10 @@ export default function Player({ video, siblings, flipJob, onClose, onNavigate, 
   const hasPrev = index > 0;
   const hasNext = index >= 0 && index < (siblings?.length || 0) - 1;
 
-  const showHint = useCallback((text) => {
-    setHint(text);
+  // `progress` is an optional 0-1 fraction (volume level, or position within
+  // the video's duration) rendered as a fill bar under the hint text.
+  const showHint = useCallback((text, progress = null) => {
+    setHint({ text, progress });
     clearTimeout(hintTimerRef.current);
     hintTimerRef.current = setTimeout(() => setHint(null), 700);
   }, []);
@@ -120,8 +180,19 @@ export default function Player({ video, siblings, flipJob, onClose, onNavigate, 
       speed: { selected: 1, options: SPEED_STEPS },
       keyboard: { focused: false, global: false },
       tooltips: { controls: false, seek: true },
+      // Fullscreen the whole player shell (header bar, hints, info/shortcuts
+      // panels), not just Plyr's own video wrapper, so our custom overlays
+      // stay visible while in fullscreen.
+      fullscreen: { container: ".player-shell" },
     });
     playerRef.current = player;
+
+    // Plyr's own fullscreen CSS only targets its own (innermost) wrapper, which
+    // no longer matches the element that actually goes fullscreen now that
+    // fullscreen.container points at .player-shell - so we replicate the "fill
+    // the screen, hide the custom toolbar" behavior ourselves via this state.
+    player.on("enterfullscreen", () => setIsFullscreen(true));
+    player.on("exitfullscreen", () => setIsFullscreen(false));
 
     const onLoadedMeta = () => {
       const resume = resumeTimeRef.current;
@@ -156,6 +227,13 @@ export default function Player({ video, siblings, flipJob, onClose, onNavigate, 
 
   useEffect(() => {
     function onKeyDown(e) {
+      if (showShortcuts) {
+        if (e.key === "Escape" || e.key === "?") {
+          e.preventDefault();
+          setShowShortcuts(false);
+        }
+        return;
+      }
       const active = document.activeElement;
       const tag = active?.tagName;
       const isFormField = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
@@ -168,6 +246,10 @@ export default function Player({ video, siblings, flipJob, onClose, onNavigate, 
       if (!player) return;
 
       switch (e.key) {
+        case "?":
+          e.preventDefault();
+          setShowShortcuts(true);
+          break;
         case " ":
         case "k":
           e.preventDefault();
@@ -178,23 +260,23 @@ export default function Player({ video, siblings, flipJob, onClose, onNavigate, 
         case "j":
           e.preventDefault();
           player.rewind(e.shiftKey ? 1 : 10);
-          showHint(e.shiftKey ? "-1s" : "-10s");
+          showHint(e.shiftKey ? "-1s" : "-10s", player.duration ? player.currentTime / player.duration : null);
           break;
         case "ArrowRight":
         case "l":
           e.preventDefault();
           player.forward(e.shiftKey ? 1 : 10);
-          showHint(e.shiftKey ? "+1s" : "+10s");
+          showHint(e.shiftKey ? "+1s" : "+10s", player.duration ? player.currentTime / player.duration : null);
           break;
         case "ArrowUp":
           e.preventDefault();
           player.increaseVolume(0.05);
-          showHint(`Volume ${Math.round(player.volume * 100)}%`);
+          showHint(`Volume ${Math.round(player.volume * 100)}%`, player.volume);
           break;
         case "ArrowDown":
           e.preventDefault();
           player.decreaseVolume(0.05);
-          showHint(`Volume ${Math.round(player.volume * 100)}%`);
+          showHint(`Volume ${Math.round(player.volume * 100)}%`, player.volume);
           break;
         case "m":
           player.muted = !player.muted;
@@ -249,14 +331,14 @@ export default function Player({ video, siblings, flipJob, onClose, onNavigate, 
           if (/^[0-9]$/.test(e.key) && player.duration) {
             const pct = parseInt(e.key, 10) / 10;
             player.currentTime = player.duration * pct;
-            showHint(`${pct * 100}%`);
+            showHint(`${pct * 100}%`, pct);
           }
         }
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [goPrev, goNext, onClose, showHint, requestFlip]);
+  }, [goPrev, goNext, onClose, showHint, requestFlip, showShortcuts]);
 
   // macOS trackpad gestures: two-finger horizontal swipe seeks, vertical
   // swipe adjusts volume. The player container has nothing to natively
@@ -270,23 +352,30 @@ export default function Player({ video, siblings, flipJob, onClose, onNavigate, 
       if (!player) return;
       const absX = Math.abs(e.deltaX);
       const absY = Math.abs(e.deltaY);
-      if (Math.max(absX, absY) < WHEEL_DEADZONE) return;
+      if (absX === 0 && absY === 0) return;
 
       // macOS's default "natural scrolling" flips the sign of wheel deltas
       // relative to finger direction, so these are negated to match: swipe
       // right -> seek forward, swipe up -> volume up.
       if (absX > absY) {
+        // Always preventDefault on horizontal deltas, even tiny ones below
+        // the deadzone: outside fullscreen, the browser's swipe-back/forward
+        // gesture locks in its decision from the gesture's earliest (small)
+        // deltas, so deferring preventDefault until the deadzone is cleared
+        // is too late to stop it from hijacking the swipe.
         e.preventDefault();
+        if (absX < WHEEL_DEADZONE) return;
         const seekDelta = -e.deltaX * SEEK_PER_WHEEL_UNIT;
         const next = Math.min(Math.max(player.currentTime + seekDelta, 0), player.duration || 0);
         player.currentTime = next;
-        showHint(seekDelta > 0 ? "»" : "«");
+        showHint(seekDelta > 0 ? "»" : "«", player.duration ? next / player.duration : null);
       } else {
+        if (absY < WHEEL_DEADZONE) return;
         e.preventDefault();
         const next = Math.min(Math.max(player.volume + e.deltaY * VOLUME_PER_WHEEL_UNIT, 0), 1);
         player.volume = next;
         player.muted = false;
-        showHint(`Volume ${Math.round(next * 100)}%`);
+        showHint(`Volume ${Math.round(next * 100)}%`, next);
       }
     }
 
@@ -299,67 +388,95 @@ export default function Player({ video, siblings, flipJob, onClose, onNavigate, 
     : `${streamUrl(video.id)}${reloadKey ? `?v=${reloadKey}` : ""}`;
 
   return (
-    <div ref={containerRef} className="fixed inset-0 bg-black z-50 flex flex-col">
-      <div className="flex items-center justify-between px-4 py-2 bg-base-900/90 text-sm">
-        <div className="flex items-center gap-3 min-w-0">
-          <button onClick={onClose} className="text-gray-300 hover:text-white px-1" title="Close (Esc)">
-            ✕
-          </button>
-          <span className="truncate font-medium" title={video.name}>
-            {video.name.replace(/\.[^.]+$/, "")}
-          </span>
+    <div ref={containerRef} className="player-shell fixed inset-0 bg-black z-50 flex flex-col text-gray-100">
+      {!isFullscreen && (
+        <div className="flex items-center justify-between px-4 py-2 bg-base-900/90 text-sm">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={onClose}
+              className="text-gray-300 hover:text-white p-1.5 rounded hover:bg-base-700"
+              title="Close (Esc)"
+              aria-label="Close player"
+            >
+              <XMarkIcon className="w-5 h-5" />
+            </button>
+            <span className="truncate font-medium" title={video.name}>
+              {video.name.replace(/\.[^.]+$/, "")}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={goPrev}
+              disabled={!hasPrev}
+              className="p-1.5 rounded hover:bg-base-700 disabled:opacity-30"
+              title="Previous ([)"
+              aria-label="Previous video"
+            >
+              <BackwardIcon className="w-5 h-5" />
+            </button>
+            <button
+              onClick={goNext}
+              disabled={!hasNext}
+              className="p-1.5 rounded hover:bg-base-700 disabled:opacity-30"
+              title="Next (])"
+              aria-label="Next video"
+            >
+              <ForwardIcon className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setShowInfo((v) => !v)}
+              className="p-1.5 rounded hover:bg-base-700"
+              title="Info (i)"
+              aria-label="File info"
+            >
+              <InformationCircleIcon className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setTheater((v) => !v)}
+              className="p-1.5 rounded hover:bg-base-700"
+              title="Theater (t)"
+              aria-label="Theater mode"
+            >
+              <TvIcon className="w-5 h-5" />
+            </button>
+            <button
+              onClick={requestFlip}
+              disabled={flipJob?.status === "running" || flipJob?.status === "ready"}
+              className="p-1.5 rounded hover:bg-base-700 disabled:opacity-30"
+              title="Flip horizontal - preview before it replaces the file (h)"
+              aria-label="Flip horizontal"
+            >
+              <ArrowsRightLeftIcon className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setShowShortcuts(true)}
+              className="p-1.5 rounded hover:bg-base-700"
+              title="Keyboard shortcuts (?)"
+              aria-label="Keyboard shortcuts"
+            >
+              <QuestionMarkCircleIcon className="w-5 h-5" />
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <button
-            onClick={goPrev}
-            disabled={!hasPrev}
-            className="px-2 py-1 rounded hover:bg-base-700 disabled:opacity-30"
-            title="Previous ([)"
-          >
-            ⏮
-          </button>
-          <button
-            onClick={goNext}
-            disabled={!hasNext}
-            className="px-2 py-1 rounded hover:bg-base-700 disabled:opacity-30"
-            title="Next (])"
-          >
-            ⏭
-          </button>
-          <button
-            onClick={() => setShowInfo((v) => !v)}
-            className="px-2 py-1 rounded hover:bg-base-700"
-            title="Info (i)"
-          >
-            ℹ
-          </button>
-          <button
-            onClick={() => setTheater((v) => !v)}
-            className="px-2 py-1 rounded hover:bg-base-700"
-            title="Theater (t)"
-          >
-            ⬓
-          </button>
-          <button
-            onClick={requestFlip}
-            disabled={flipJob?.status === "running" || flipJob?.status === "ready"}
-            className="px-2 py-1 rounded hover:bg-base-700 disabled:opacity-30"
-            title="Flip horizontal - preview before it replaces the file (h)"
-          >
-            ⇋
-          </button>
-        </div>
-      </div>
+      )}
 
       <div className="flex-1 flex items-center justify-center relative overflow-hidden">
-        <div className={theater ? "w-full h-full" : "w-full max-w-6xl mx-auto"}>
+        <div className={theater || isFullscreen ? "w-full h-full" : "w-full max-w-6xl mx-auto"}>
           <video key={`${video.id}-${reloadKey}-${previewingFlip ? "preview" : "orig"}`} ref={videoElRef} playsInline>
             <source src={videoSrc} />
           </video>
         </div>
         {hint && (
-          <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-black/80 text-white px-3 py-1.5 rounded-md text-sm pointer-events-none">
-            {hint}
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-black/80 text-white px-3 py-1.5 rounded-md text-sm pointer-events-none flex flex-col items-center gap-1.5 min-w-[88px]">
+            <span>{hint.text}</span>
+            {hint.progress != null && (
+              <div className="w-full h-1 bg-white/25 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-white rounded-full"
+                  style={{ width: `${Math.round(Math.min(Math.max(hint.progress, 0), 1) * 100)}%` }}
+                />
+              </div>
+            )}
           </div>
         )}
         {showInfo && (
@@ -382,10 +499,10 @@ export default function Player({ video, siblings, flipJob, onClose, onNavigate, 
 
         {flipJob?.status === "running" && (
           <div className="absolute inset-0 bg-black/85 flex flex-col items-center justify-center gap-3 text-sm px-6">
-            <div className="w-8 h-8 border-2 border-accent-400 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-secondary-400 border-t-transparent rounded-full animate-spin" />
             <p>Flipping video{flipJob.progress != null ? ` - ${flipJob.progress}%` : "…"}</p>
             <div className="w-64 h-1.5 bg-base-700 rounded overflow-hidden">
-              <div className="h-full bg-accent-500 transition-all" style={{ width: `${flipJob.progress ?? 0}%` }} />
+              <div className="h-full bg-primary-500 transition-all" style={{ width: `${flipJob.progress ?? 0}%` }} />
             </div>
             <p className="text-gray-400 text-center">
               Building a flipped copy to preview - the original is untouched. You can close this
@@ -414,7 +531,7 @@ export default function Player({ video, siblings, flipJob, onClose, onNavigate, 
               </button>
               <button
                 onClick={handleKeep}
-                className="px-3 py-1.5 rounded bg-accent-500 hover:bg-accent-400"
+                className="px-3 py-1.5 rounded bg-primary-500 hover:bg-primary-400 text-white"
               >
                 Keep this version
               </button>
@@ -423,12 +540,59 @@ export default function Player({ video, siblings, flipJob, onClose, onNavigate, 
         )}
       </div>
 
-      <div className="px-4 py-2 text-xs text-gray-500 bg-base-900/90 hidden md:block">
-        Space/K play&nbsp;&middot; ←/→ or J/L seek 10s (+Shift 1s)&nbsp;&middot; ↑/↓ volume&nbsp;&middot; M
-        mute&nbsp;&middot; F fullscreen&nbsp;&middot; T theater&nbsp;&middot; P picture-in-picture&nbsp;&middot;
-        , / . speed&nbsp;&middot; 0-9 seek %&nbsp;&middot; [ / ] prev/next&nbsp;&middot; H flip&nbsp;&middot; I
-        info&nbsp;&middot; Esc close
-      </div>
+      {showShortcuts && (
+        <div
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60]"
+          onClick={() => setShowShortcuts(false)}
+        >
+          <div
+            className="bg-base-900 rounded-lg w-full max-w-lg p-5 max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-semibold">Keyboard shortcuts</h3>
+              <button
+                onClick={() => setShowShortcuts(false)}
+                className="text-gray-400 hover:text-white p-1.5 rounded hover:bg-base-800"
+                aria-label="Close"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
+              {SHORTCUT_GROUPS.map((group) => (
+                <div key={group.title}>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                    {group.title}
+                  </p>
+                  <div className="space-y-1.5">
+                    {group.items.map(([alternatives, label]) => (
+                      <div key={label} className="flex items-center justify-between gap-3 text-sm">
+                        <span className="text-gray-300">{label}</span>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {alternatives.map((combo, i) => (
+                            <span key={i} className="flex items-center gap-1">
+                              {i > 0 && <span className="text-gray-500 text-xs">or</span>}
+                              {combo.map((k, j) => (
+                                <span key={j} className="flex items-center gap-0.5">
+                                  {j > 0 && <span className="text-gray-500 text-xs">+</span>}
+                                  <kbd className="inline-flex items-center justify-center min-w-[1.65rem] h-6 px-1.5 rounded-md border border-base-600 bg-base-800 text-xs font-mono text-gray-200">
+                                    {k}
+                                  </kbd>
+                                </span>
+                              ))}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirmFlipOpen && (
         <div
@@ -451,7 +615,7 @@ export default function Player({ video, siblings, flipJob, onClose, onNavigate, 
               </button>
               <button
                 onClick={confirmFlip}
-                className="px-3 py-1.5 rounded text-sm bg-accent-500 hover:bg-accent-400"
+                className="px-3 py-1.5 rounded text-sm bg-primary-500 hover:bg-primary-400 text-white"
               >
                 Build flipped preview
               </button>

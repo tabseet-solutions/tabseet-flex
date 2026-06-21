@@ -29,30 +29,6 @@ export async function removeRoot(requestedPath) {
   return getRoots();
 }
 
-// Seeds the known default library roots, for whichever of them are
-// actually mounted, if no roots have been configured yet.
-const DEFAULT_ROOTS = [
-  path.join(MEDIA_BASE, "renegade", "PH"),
-  path.join(MEDIA_BASE, "microsd", "PH"),
-];
-
-export async function ensureDefaultRoot() {
-  const cfg = await configStore.read();
-  if (cfg.roots.length > 0) return;
-  const found = [];
-  for (const defaultPath of DEFAULT_ROOTS) {
-    try {
-      const stat = await fs.stat(defaultPath);
-      if (stat.isDirectory()) found.push(defaultPath);
-    } catch {
-      // volume not mounted - user can add a root from the UI
-    }
-  }
-  if (found.length > 0) {
-    await configStore.update((c) => ({ ...c, roots: found }));
-  }
-}
-
 // Recursively collects every video file under rootPath. Shared by the
 // duplicate scanner and the consolidated view - both need every video
 // regardless of nesting, unlike listDir() which only lists direct children.

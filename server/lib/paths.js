@@ -3,7 +3,7 @@ import path from "node:path";
 
 // Everything browsable/streamable must live under this prefix inside the
 // container - it's where docker-compose bind-mounts the host's /Volumes
-// (i.e. every external/mounted drive on the Mac, including renegade/PH).
+// (i.e. every external/mounted drive on the Mac).
 export const MEDIA_BASE = process.env.MEDIA_BASE || "/media/Volumes";
 
 export const VIDEO_EXTENSIONS = new Set([

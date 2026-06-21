@@ -2,13 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-primary-500: 99 102 241;
+  --color-primary-400: 129 140 248;
+  --color-secondary-500: 20 184 166;
+  --color-secondary-400: 45 212 191;
+}
+
 * {
-  scrollbar-color: #3a3a44 transparent;
+  scrollbar-color: #cbd5e1 transparent;
   scrollbar-width: thin;
 }
 
+.dark * {
+  scrollbar-color: #3a3a44 transparent;
+}
+
 .plyr {
-  --plyr-color-main: #6366f1;
+  --plyr-color-main: rgb(var(--color-primary-500));
   --plyr-video-background: #000;
   border-radius: 0.5rem;
+  /* Percentage height only resolves when an ancestor has a definite height
+     (theater/fullscreen's h-full wrapper) - otherwise it collapses to auto,
+     so windowed mode is unaffected. Without this, .plyr stays auto-height
+     and sticks to the top of the h-full wrapper, leaving the leftover space
+     as a gap below instead of split evenly above/below. */
+  height: 100%;
+}
+
+/* Fill the frame and center the picture via object-fit instead of relying on
+   .plyr's own height to match the video's aspect ratio - this is what
+   produces evenly centered letterboxing/pillarboxing in theater/fullscreen. */
+.plyr video {
+  object-fit: contain;
 }
