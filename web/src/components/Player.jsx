@@ -79,7 +79,12 @@ export default function Player({ video, siblings, flipJob, onClose, onNavigate, 
   const [confirmFlipOpen, setConfirmFlipOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [previewingFlip, setPreviewingFlip] = useState(false);
+  // Seeded from the flip job (not always false) so a video that already has
+  // a "ready" job when the player first mounts (e.g. reopened after the job
+  // finished while the player was closed) renders straight into the preview
+  // - see the effect below for why starting false and flipping true a beat
+  // later is unsafe.
+  const [previewingFlip, setPreviewingFlip] = useState(() => flipJob?.status === "ready");
   const [errorDismissed, setErrorDismissed] = useState(false);
 
   const index = siblings ? siblings.findIndex((v) => v.id === video.id) : -1;
@@ -130,14 +135,23 @@ export default function Player({ video, siblings, flipJob, onClose, onNavigate, 
     await onDiscardFlip(video.id);
   }, [video.id, onDiscardFlip]);
 
-  const prevFlipStatusRef = useRef(undefined);
+  const prevFlipStatusRef = useRef(flipJob?.status);
 
-  // Reset per-video UI state when switching videos.
+  // Reset per-video UI state when switching videos (this also runs on
+  // mount, but the previewingFlip/prevFlipStatusRef initial values above
+  // already cover that case - this covers navigating to a sibling video
+  // via [ / ] without unmounting the player). Seeding both from the new
+  // video's flip job, rather than unconditionally false/undefined, matters
+  // for the same reason as above: if this effect left previewingFlip false
+  // while the job is already "ready", the watcher effect below would flip
+  // it true a beat later, remounting the Plyr-wrapped <video> twice in
+  // quick succession - Plyr's destroy()/init() racing across those two
+  // remounts crashes with a React "removeChild" DOM error.
   useEffect(() => {
     setConfirmFlipOpen(false);
     setErrorDismissed(false);
-    setPreviewingFlip(false);
-    prevFlipStatusRef.current = undefined;
+    setPreviewingFlip(flipJob?.status === "ready");
+    prevFlipStatusRef.current = flipJob?.status;
   }, [video.id]);
 
   // Drives the preview source from the flip job's status, regardless of

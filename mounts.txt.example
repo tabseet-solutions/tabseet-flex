@@ -10,7 +10,7 @@
 #   Windows (WSL2):  /mnt/<drive-letter>/...
 #
 # Lines are mounted into the container at the same path under /media
-# (e.g. /Volumes/renegade -> /media/Volumes/renegade).
+# (e.g. /Volumes/MyDrive -> /media/Volumes/MyDrive).
 #
 # After editing this file, just re-run ./start.sh - it regenerates the
 # Colima VM mounts and docker-compose volumes from this file automatically.

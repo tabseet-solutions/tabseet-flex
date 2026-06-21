@@ -5,6 +5,52 @@ Docker - nothing is installed on your machine, and nothing is deployed
 anywhere. Works on macOS, Linux, and Windows (via WSL2 - see
 [Windows](#windows-wsl2) below).
 
+![Browsing a library folder](docs/screenshots/browse.gif)
+
+## Features
+
+**Browse folders, search, and sort.** Library folders show up as cards on
+the home screen; opening one lists its videos with poster thumbnails,
+duration, and file size. Search filters by filename within the current
+folder (or across the whole library from the Consolidated tab), and
+results sort by name, date, duration, or size.
+
+![Searching and sorting within a folder](docs/screenshots/search.gif)
+
+**One view across every drive.** The Consolidated tab flattens every
+library folder - across every mounted drive - into a single searchable
+grid, so you don't have to remember which volume something lives on.
+
+![All videos across every library folder in one grid](docs/screenshots/consolidated.gif)
+
+**A custom player built for keyboard/trackpad control.** [Plyr](https://plyr.io)
+under the hood, with a full keyboard-shortcut layer on top (seek, volume,
+speed, theater mode, PiP, frame-accurate jumps) - see
+[Player shortcuts](#player-shortcuts) below - plus two-finger trackpad
+gestures on macOS and a Continue Watching row that picks up where you left
+off.
+
+![Playing a video with keyboard shortcuts, then picking it back up from Continue Watching](docs/screenshots/player.gif)
+
+**Light/dark mode and twelve accent color presets.** Pick a palette in
+Settings → Appearance; it's just CSS variables, applied instantly, no
+reload.
+
+![Switching color palette presets and dark mode](docs/screenshots/theme.gif)
+
+**Flip a video without touching the original.** Builds a mirrored preview
+copy first - decide whether to keep it (atomically replacing the original)
+or discard it, all without leaving the player. See
+[Flipping videos](#flipping-videos) below for the full workflow.
+
+![Building a flipped preview, then discarding it](docs/screenshots/flip.gif)
+
+**Find and clean up duplicates.** Scans every library folder for videos
+that share a name and lets you pick which copy to keep - thumbnails
+included, so you can tell them apart before deleting anything.
+
+![Resolving a duplicate video found across two library folders](docs/screenshots/duplicates.gif)
+
 ## Stack
 
 - **Backend**: Node.js + Express. Streams video with HTTP Range support,
@@ -56,7 +102,7 @@ macOS has no native container runtime, so Docker has to run inside a Linux
 VM. Colima (unlike Docker Desktop) only auto-shares your home directory
 into that VM by default, and that default goes away the moment you pass
 any `--mount` flag - it won't transparently expose a *separately mounted*
-drive like `/Volumes/renegade` just because it's attached to the machine.
+drive like `/Volumes/MyDrive` just because it's attached to the machine.
 So on macOS, this app runs Colima in its own dedicated profile, with the
 drives from `mounts.txt` (see below) and this project directory (for
 `data/`/`cache/` persistence) explicitly shared. `start.sh`/`stop.sh`
@@ -90,8 +136,8 @@ flip feature to be able to replace the original file (everything else is
 read-only):
 
 ```
-/Volumes/renegade/PH:rw
-/Volumes/microsd/PH:rw
+/Volumes/MyDrive/Movies:rw
+/Volumes/Backup/Shows:rw
 ```
 
 After editing it, just run `./start.sh` again - it regenerates the Docker
@@ -185,6 +231,6 @@ read-only error when you try to Keep.
   so it can't keep competing with playback for I/O on a slow drive.
 - The container has a 2GB memory cap (`docker-compose.yml`) as a backstop
   so a runaway burst gets killed rather than taking down the VM. It's
-  manual start/stop only (`restart: "no"`) - it never comes back on its
+  manual start/stop only (`restart: "no"`), so it never comes back on its
   own, not even after a crash or a Colima VM restart; run `./start.sh`
   again when you want it back.
