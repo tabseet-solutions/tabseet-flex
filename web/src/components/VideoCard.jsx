@@ -1,11 +1,13 @@
 import { thumbUrl } from "../api.js";
 import { formatDuration } from "../format.js";
+import { useThumbnail } from "../hooks/useThumbnail.js";
 
 export default function VideoCard({ video, onPlay, volume }) {
   const watchPct =
     video.progress && video.progress.duration
       ? Math.min(100, (video.progress.position / video.progress.duration) * 100)
       : 0;
+  const [thumbRef, thumbSrc] = useThumbnail(thumbUrl(video.id));
 
   return (
     <button
@@ -13,13 +15,14 @@ export default function VideoCard({ video, onPlay, volume }) {
       data-grid-item="true"
       className="group relative flex flex-col rounded-lg overflow-hidden bg-base-800 hover:ring-2 hover:ring-accent-500 transition-all text-left focus:outline-none focus:ring-2 focus:ring-accent-500"
     >
-      <div className="relative aspect-video bg-base-700 overflow-hidden">
-        <img
-          src={thumbUrl(video.id)}
-          alt={video.name}
-          loading="lazy"
-          className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-        />
+      <div ref={thumbRef} className="relative aspect-video bg-base-700 overflow-hidden">
+        {thumbSrc && (
+          <img
+            src={thumbSrc}
+            alt={video.name}
+            className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+          />
+        )}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/30 transition-opacity">
           <svg viewBox="0 0 24 24" className="w-12 h-12 text-white drop-shadow-lg" fill="currentColor">
             <path d="M8 5v14l11-7z" />

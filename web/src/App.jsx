@@ -19,6 +19,7 @@ import {
   commitFlip as apiCommitFlip,
   discardFlip as apiDiscardFlip,
 } from "./api.js";
+import { pauseThumbnailLoading, resumeThumbnailLoading } from "./lib/thumbnailLoader.js";
 
 export default function App() {
   const [roots, setRoots] = useState([]);
@@ -165,6 +166,7 @@ export default function App() {
   const handlePreviewFlip = useCallback(async (id) => {
     try {
       const v = await getVideo(id);
+      pauseThumbnailLoading();
       setPlayer({ video: v, siblings: [v] });
     } catch {
       /* ignore */
@@ -320,11 +322,15 @@ export default function App() {
   };
 
   const handlePlay = (video, siblings) => {
+    // Stop competing with the stream request for a connection before it's
+    // even issued - see lib/thumbnailLoader.js.
+    pauseThumbnailLoading();
     setPlayer({ video, siblings });
   };
 
   const handleClosePlayer = () => {
     setPlayer(null);
+    resumeThumbnailLoading();
     loadContinueWatching();
     refreshCurrentView();
   };
