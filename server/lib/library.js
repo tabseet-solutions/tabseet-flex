@@ -53,6 +53,46 @@ export async function ensureDefaultRoot() {
   }
 }
 
+// Recursively collects every video file under rootPath. Shared by the
+// duplicate scanner and the consolidated view - both need every video
+// regardless of nesting, unlike listDir() which only lists direct children.
+export async function walkVideos(rootPath) {
+  const results = [];
+  async function walk(dir) {
+    let entries;
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name.startsWith(".")) continue;
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        await walk(full);
+      } else if (entry.isFile() && isVideoFile(entry.name)) {
+        results.push({ id: idFor(full), name: entry.name, path: full });
+      }
+    }
+  }
+  await walk(rootPath);
+  return results;
+}
+
+// Flat, recursive view across every configured root, each video tagged
+// with its source volume (the first path segment under MEDIA_BASE) so the
+// consolidated UI can show where a given copy lives - duplicates across volumes
+// are intentionally left in, not deduped.
+export async function listConsolidated() {
+  const roots = await getRoots();
+  const allVideos = [];
+  for (const root of roots) {
+    allVideos.push(...(await walkVideos(root.path)));
+  }
+  await registerVideos(allVideos.map((v) => ({ id: v.id, path: v.path })));
+  return allVideos.map((v) => ({ ...v, volume: displayPath(v.path).split(path.sep)[0] }));
+}
+
 export async function listDir(requestedPath) {
   const resolved = resolveWithinMedia(requestedPath);
   const entries = await fs.readdir(resolved, { withFileTypes: true });

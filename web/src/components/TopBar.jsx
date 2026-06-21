@@ -8,6 +8,8 @@ export default function TopBar({
   onHome,
   onSettings,
   onDuplicates,
+  view,
+  onChangeView,
 }) {
   return (
     <header className="flex items-center gap-3 px-4 py-3 bg-base-900 border-b border-base-800 sticky top-0 z-30">
@@ -15,10 +17,26 @@ export default function TopBar({
         <img src="/favicon.svg" alt="" className="w-7 h-7" />
         Tabseet Flex
       </button>
+      <div className="flex items-center gap-0.5 bg-base-800 rounded p-0.5 flex-shrink-0">
+        {[
+          { key: "folders", label: "Folders" },
+          { key: "consolidated", label: "Consolidated" },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => onChangeView(tab.key)}
+            className={`px-2.5 py-1 rounded text-sm transition-colors ${
+              view === tab.key ? "bg-accent-500 text-white" : "text-gray-300 hover:text-white"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
       <input
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
-        placeholder="Search this folder..."
+        placeholder={view === "consolidated" ? "Search entire library..." : "Search this folder..."}
         className="flex-1 max-w-md bg-base-800 rounded px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-accent-500"
       />
       <select

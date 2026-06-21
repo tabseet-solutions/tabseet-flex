@@ -1,32 +1,8 @@
 import fs from "node:fs/promises";
 import { constants as FS } from "node:fs";
 import path from "node:path";
-import { isVideoFile, idFor } from "./paths.js";
-import { getRoots, registerVideos, forgetVideo, resolveId } from "./library.js";
+import { getRoots, registerVideos, forgetVideo, resolveId, walkVideos } from "./library.js";
 import { invalidateCache, forgetMeta } from "./media.js";
-
-async function walkVideos(rootPath, rootDisplay) {
-  const results = [];
-  async function walk(dir) {
-    let entries;
-    try {
-      entries = await fs.readdir(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const entry of entries) {
-      if (entry.name.startsWith(".")) continue;
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        await walk(full);
-      } else if (entry.isFile() && isVideoFile(entry.name)) {
-        results.push({ id: idFor(full), name: entry.name, path: full, root: rootPath, rootDisplay });
-      }
-    }
-  }
-  await walk(rootPath);
-  return results;
-}
 
 // Same name (ignoring extension/case/whitespace) is the duplicate
 // heuristic - good enough for a personal library where the same file
@@ -41,7 +17,8 @@ export async function findDuplicates() {
   const roots = await getRoots();
   const allVideos = [];
   for (const root of roots) {
-    allVideos.push(...(await walkVideos(root.path, root.display)));
+    const videos = await walkVideos(root.path);
+    allVideos.push(...videos.map((v) => ({ ...v, root: root.path, rootDisplay: root.display })));
   }
 
   await registerVideos(allVideos.map((v) => ({ id: v.id, path: v.path })));

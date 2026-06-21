@@ -1,7 +1,7 @@
 import { thumbUrl } from "../api.js";
 import { formatDuration } from "../format.js";
 
-export default function VideoCard({ video, onPlay }) {
+export default function VideoCard({ video, onPlay, volume }) {
   const watchPct =
     video.progress && video.progress.duration
       ? Math.min(100, (video.progress.position / video.progress.duration) * 100)
@@ -28,6 +28,11 @@ export default function VideoCard({ video, onPlay }) {
         {video.duration > 0 && (
           <span className="absolute bottom-1 right-1 px-1.5 py-0.5 text-xs bg-black/75 rounded">
             {formatDuration(video.duration)}
+          </span>
+        )}
+        {volume && (
+          <span className="absolute top-1 left-1 px-1.5 py-0.5 text-xs bg-black/75 rounded text-accent-400">
+            {volume}
           </span>
         )}
         {watchPct > 0 && (

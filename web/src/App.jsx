@@ -11,6 +11,7 @@ import DuplicatesModal from "./components/DuplicatesModal.jsx";
 import {
   getDirectories,
   getLibrary,
+  getConsolidated,
   getContinueWatching,
   getVideo,
   getActiveFlips,
@@ -21,8 +22,12 @@ import {
 
 export default function App() {
   const [roots, setRoots] = useState([]);
+  const [view, setView] = useState("folders");
   const [currentPath, setCurrentPath] = useState(null);
   const [dir, setDir] = useState(null);
+  const [consolidated, setConsolidated] = useState(null);
+  const [consolidatedLoading, setConsolidatedLoading] = useState(false);
+  const [consolidatedError, setConsolidatedError] = useState(null);
   const [continueWatching, setContinueWatching] = useState([]);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -117,16 +122,24 @@ export default function App() {
     }
   }, []);
 
+  // Re-fetches whichever view is currently on screen - used after anything
+  // that can change what it shows (a flip being kept, the player closing).
+  const refreshCurrentView = useCallback(() => {
+    if (view === "consolidated") {
+      getConsolidated({ search, sort, order }).then(setConsolidated).catch(() => {});
+    } else if (currentPath !== null) {
+      getLibrary({ path: currentPath, search, sort, order }).then(setDir).catch(() => {});
+    }
+  }, [view, currentPath, search, sort, order]);
+
   const handleKeepFlip = useCallback(
     async (id) => {
       const status = await apiCommitFlip(id);
       setActiveFlips((prev) => ({ ...prev, [id]: { ...prev[id], ...status } }));
       loadContinueWatching();
-      if (currentPath !== null) {
-        getLibrary({ path: currentPath, search, sort, order }).then(setDir).catch(() => {});
-      }
+      refreshCurrentView();
     },
-    [currentPath, search, sort, order, loadContinueWatching]
+    [refreshCurrentView, loadContinueWatching]
   );
 
   const handleDiscardFlip = useCallback(async (id) => {
@@ -165,7 +178,7 @@ export default function App() {
   }, [searchInput]);
 
   useEffect(() => {
-    if (currentPath === null) {
+    if (view !== "folders" || currentPath === null) {
       setDir(null);
       return;
     }
@@ -185,24 +198,49 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [currentPath, search, sort, order]);
+  }, [view, currentPath, search, sort, order]);
 
-  // Auto-focus the first card whenever a new folder finishes loading (not on
-  // every reload of the *same* folder - search/sort/player-close also
-  // reload `dir`, and refocusing on those would yank focus out of the
-  // search box while typing).
   useEffect(() => {
-    if (loading || player || settingsOpen || duplicatesOpen) return;
-    if (focusedPathRef.current === currentPath) return;
+    if (view !== "consolidated") {
+      setConsolidated(null);
+      return;
+    }
+    let cancelled = false;
+    setConsolidatedLoading(true);
+    setConsolidatedError(null);
+    getConsolidated({ search, sort, order })
+      .then((res) => {
+        if (!cancelled) setConsolidated(res);
+      })
+      .catch((err) => {
+        if (!cancelled) setConsolidatedError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setConsolidatedLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [view, search, sort, order]);
+
+  // Auto-focus the first card whenever a new folder/view finishes loading
+  // (not on every reload of the *same* view - search/sort/player-close also
+  // reload `dir`/`consolidated`, and refocusing on those would yank focus out
+  // of the search box while typing).
+  const viewKey = view === "consolidated" ? "consolidated" : currentPath;
+  const isViewLoading = view === "consolidated" ? consolidatedLoading : loading;
+  useEffect(() => {
+    if (isViewLoading || player || settingsOpen || duplicatesOpen) return;
+    if (focusedPathRef.current === viewKey) return;
     const active = document.activeElement;
     const activeTag = active?.tagName;
     if (activeTag === "INPUT" || activeTag === "TEXTAREA" || activeTag === "SELECT") return;
     const first = mainRef.current?.querySelector("[data-grid-item]");
     if (first) {
       first.focus();
-      focusedPathRef.current = currentPath;
+      focusedPathRef.current = viewKey;
     }
-  }, [currentPath, loading, dir, roots, continueWatching, player, settingsOpen, duplicatesOpen]);
+  }, [viewKey, isViewLoading, dir, consolidated, roots, continueWatching, player, settingsOpen, duplicatesOpen]);
 
   // Arrow-key navigation across the folder/video card grid(s). Cards are
   // plain DOM order (CSS grid auto-flow row), so rather than hardcoding each
@@ -266,13 +304,19 @@ export default function App() {
   const openFolder = (path) => {
     setSearchInput("");
     setSearch("");
+    setView("folders");
     setCurrentPath(path);
   };
 
   const goHome = () => {
     setSearchInput("");
     setSearch("");
+    setView("folders");
     setCurrentPath(null);
+  };
+
+  const changeView = (next) => {
+    setView(next);
   };
 
   const handlePlay = (video, siblings) => {
@@ -282,9 +326,7 @@ export default function App() {
   const handleClosePlayer = () => {
     setPlayer(null);
     loadContinueWatching();
-    if (currentPath !== null) {
-      getLibrary({ path: currentPath, search, sort, order }).then(setDir).catch(() => {});
-    }
+    refreshCurrentView();
   };
 
   return (
@@ -299,10 +341,33 @@ export default function App() {
         onHome={goHome}
         onSettings={() => setSettingsOpen(true)}
         onDuplicates={() => setDuplicatesOpen(true)}
+        view={view}
+        onChangeView={changeView}
       />
 
       <main ref={mainRef} className="flex-1 px-4 py-4">
-        {currentPath === null ? (
+        {view === "consolidated" ? (
+          <>
+            {consolidatedError && <p className="text-red-400 text-sm my-2">{consolidatedError}</p>}
+            {consolidatedLoading && <p className="text-gray-500 text-sm my-4">Loading…</p>}
+            {!consolidatedLoading && consolidated && (
+              consolidated.videos.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                  {consolidated.videos.map((v) => (
+                    <VideoCard
+                      key={v.id}
+                      video={v}
+                      volume={v.volume}
+                      onPlay={() => handlePlay(v, consolidated.videos)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-sm">No videos found across your library folders.</p>
+              )
+            )}
+          </>
+        ) : currentPath === null ? (
           <>
             <ContinueWatching
               items={continueWatching}

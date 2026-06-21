@@ -32,6 +32,14 @@ export const getLibrary = ({ path, search, sort, order } = {}) => {
 
 export const getContinueWatching = () => request("/library/continue-watching");
 
+export const getConsolidated = ({ search, sort, order } = {}) => {
+  const params = new URLSearchParams();
+  if (search) params.set("search", search);
+  if (sort) params.set("sort", sort);
+  if (order) params.set("order", order);
+  return request(`/library/consolidated?${params.toString()}`);
+};
+
 export const getVideo = (id) => request(`/video/${id}`);
 
 export const getProgress = (id) => request(`/progress/${id}`);
