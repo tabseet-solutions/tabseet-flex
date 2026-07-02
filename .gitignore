@@ -5,8 +5,6 @@ cache/*
 !cache/.gitkeep
 .DS_Store
 *.log
-docker-compose.mounts.generated.yml
-colima-mounts.generated.sh
 
 # Machine-specific - which drives/folders to mount, varies per host.
 mounts.txt

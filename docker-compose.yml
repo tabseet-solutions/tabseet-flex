@@ -7,10 +7,9 @@ services:
     ports:
       - "127.0.0.1:4400:4400"
     volumes:
-      # Media drive mounts are dynamic - see mounts.txt and
-      # generate-mounts.sh. start.sh/stop.sh layer
-      # docker-compose.mounts.generated.yml on top of this file to supply
-      # them; this file only has the static stuff.
+      # Media drive mounts are dynamic - see mounts.txt. start.sh parses it
+      # and layers the resulting volumes overlay on top of this file (piped
+      # in via stdin); this file only has the static stuff.
       #
       # Persisted app data: library roots, watch progress, thumbnail/sprite cache.
       - ./data:/app/data

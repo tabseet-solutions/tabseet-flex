@@ -108,9 +108,9 @@ drives from `mounts.txt` (see below) and this project directory (for
 `data/`/`cache/` persistence) explicitly shared. `start.sh`/`stop.sh`
 handle this for you - you shouldn't need to run `colima` commands manually.
 
-`generate-mounts.sh` figures out which drive each entry in `mounts.txt`
-actually lives on by asking the filesystem (`df -P`) rather than assuming
-a fixed layout like `/Volumes/<name>`.
+`start.sh` figures out which drive each entry in `mounts.txt` actually
+lives on by asking the filesystem (`df -P`) rather than assuming a fixed
+layout like `/Volumes/<name>`.
 
 On Linux (and WSL2), none of this applies: there's no VM, so no separate
 drive-sharing step at all - any path Docker can see on the host bind-mounts
@@ -140,21 +140,19 @@ read-only):
 /Volumes/Backup/Shows:rw
 ```
 
-After editing it, just run `./start.sh` again - it regenerates the Docker
-volumes from this file (`generate-mounts.sh`), plus the Colima VM's shares
-on macOS (no rebuild/VM-recreate needed *unless* you add a path on a drive
-Colima isn't already sharing, in which case it'll start a fresh VM share
-for it automatically). On Linux/WSL2 there's no VM step - the new path is
-just bind-mounted directly.
+After editing it, just run `./start.sh` again - it re-reads this file and
+re-derives the Docker volumes, plus the Colima VM's shares on macOS (no
+rebuild/VM-recreate needed *unless* you add a path on a drive Colima isn't
+already sharing, in which case it'll start a fresh VM share for it
+automatically). On Linux/WSL2 there's no VM step - the new path is just
+bind-mounted directly.
 
 There's no templating engine here (Jinja and friends are overkill for one
-YAML list) - `generate-mounts.sh` is a small bash script that turns
-`mounts.txt` into `docker-compose.mounts.generated.yml` (the dynamic part
-of the Compose config, layered on top of the static `docker-compose.yml`,
-used on every OS) and `colima-mounts.generated.sh` (the Colima `--mount`
-flags, generated unconditionally but only read by `start.sh` on macOS).
-Both are regenerated on every `./start.sh`/`./stop.sh` run and are safe to
-delete.
+YAML list) - `start.sh` parses `mounts.txt` itself and pipes the resulting
+`volumes:` overlay straight into `docker compose ... -f -` via stdin
+(layered on top of the static `docker-compose.yml`), plus - on macOS - the
+Colima `--mount` flags, computed in the same pass. Nothing is written to
+disk, so there's no generated file to regenerate or clean up.
 
 Folders listed in `mounts.txt` show up as library folders on first run
 automatically (whichever of them are actually present). To add a folder
