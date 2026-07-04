@@ -12,6 +12,7 @@ import {
 } from "@heroicons/react/20/solid";
 import { streamUrl, flipPreviewUrl, setProgress } from "../api.js";
 import { formatDuration } from "../format.js";
+import { useTheaterMode } from "../hooks/useTheaterMode.js";
 
 const SPEED_STEPS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 const SEEK_PER_WHEEL_UNIT = 0.1; // seconds of seek per pixel of horizontal trackpad scroll
@@ -73,7 +74,7 @@ export default function Player({ video, siblings, flipJob, onClose, onNavigate, 
   const hintTimerRef = useRef(null);
   const resumeTimeRef = useRef(null);
   const [showInfo, setShowInfo] = useState(false);
-  const [theater, setTheater] = useState(false);
+  const [theater, setTheater] = useTheaterMode();
   const [hint, setHint] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [confirmFlipOpen, setConfirmFlipOpen] = useState(false);
