@@ -36,3 +36,11 @@
 .plyr video {
   object-fit: contain;
 }
+
+/* Plyr only hides the cursor when idle in fullscreen (its own CSS scopes
+   `cursor: none` to `:fullscreen`/`--fullscreen-fallback`). Extend the same
+   idle behavior to windowed/theater mode so the cursor disappears whenever
+   the controls do. */
+.plyr--video.plyr--hide-controls {
+  cursor: none;
+}
