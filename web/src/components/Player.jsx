@@ -11,7 +11,7 @@ import {
   QuestionMarkCircleIcon,
 } from "@heroicons/react/20/solid";
 import { streamUrl, flipPreviewUrl, setProgress } from "../api.js";
-import { formatDuration } from "../format.js";
+import { formatDuration, formatBytes } from "../format.js";
 import { useTheaterMode } from "../hooks/useTheaterMode.js";
 
 const SPEED_STEPS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
@@ -504,9 +504,15 @@ export default function Player({ video, siblings, flipJob, onClose, onNavigate, 
             {video.width > 0 && (
               <>
                 <p className="text-gray-400">Resolution</p>
-                <p>
+                <p className="mb-2">
                   {video.width}×{video.height}
                 </p>
+              </>
+            )}
+            {video.size > 0 && (
+              <>
+                <p className="text-gray-400">Size</p>
+                <p>{formatBytes(video.size)}</p>
               </>
             )}
           </div>
