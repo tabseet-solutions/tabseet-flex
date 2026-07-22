@@ -21,6 +21,24 @@
 .plyr {
   --plyr-color-main: rgb(var(--color-primary-500));
   --plyr-video-background: #000;
+  /* Material touch-target sizing (18px icon / 10px spacing by default is
+     closer to a desktop toolbar than a 48dp Material control) - bump icons
+     and the seek/volume thumbs up to match the rest of the app's controls,
+     and round things off with Material-style radii/shadows. Button padding
+     itself is set explicitly below rather than via --plyr-control-spacing's
+     own calc()-based padding, since that formula can't hit a precise 48px
+     target for both normal and overlaid (play) buttons at once - this var's
+     remaining job is the gap Plyr renders between adjacent controls. */
+  --plyr-control-icon-size: 24px;
+  --plyr-control-spacing: 14px;
+  --plyr-control-radius: 999px;
+  --plyr-font-size-time: 14px;
+  --plyr-font-size-badge: 11px;
+  --plyr-range-thumb-height: 16px;
+  --plyr-range-track-height: 6px;
+  --plyr-tooltip-radius: 8px;
+  --plyr-menu-radius: 12px;
+  --plyr-video-control-background-hover: rgb(var(--color-primary-500) / 0.25);
   border-radius: 0.5rem;
   /* Percentage height only resolves when an ancestor has a definite height
      (theater/fullscreen's h-full wrapper) - otherwise it collapses to auto,
@@ -28,6 +46,17 @@
      and sticks to the top of the h-full wrapper, leaving the leftover space
      as a gap below instead of split evenly above/below. */
   height: 100%;
+}
+
+/* Plyr's own play/pause/mute/etc buttons don't expose a size custom
+   property beyond the icon itself - pad them out to a proper 48px Material
+   touch target instead of just enlarging the icon inside a cramped button. */
+.plyr__control {
+  padding: 12px;
+}
+
+.plyr__control--overlaid {
+  padding: 22px;
 }
 
 /* Fill the frame and center the picture via object-fit instead of relying on

@@ -1,22 +1,26 @@
+import { Breadcrumbs as MuiBreadcrumbs, Link, Typography } from "@mui/material";
+
 export default function Breadcrumbs({ crumbs, onNavigate }) {
   if (!crumbs || crumbs.length === 0) return null;
   return (
-    <nav className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 overflow-x-auto whitespace-nowrap py-1">
-      {crumbs.map((c, i) => (
-        <span key={c.path} className="flex items-center gap-1">
-          {i > 0 && <span className="text-gray-300 dark:text-gray-600">/</span>}
-          <button
+    <MuiBreadcrumbs sx={{ py: 1 }}>
+      {crumbs.map((c, i) =>
+        i === crumbs.length - 1 ? (
+          <Typography key={c.path} color="text.primary" sx={{ fontWeight: 500 }}>
+            {c.name}
+          </Typography>
+        ) : (
+          <Link
+            key={c.path}
+            component="button"
+            underline="hover"
+            color="inherit"
             onClick={() => onNavigate(c.path)}
-            className={
-              i === crumbs.length - 1
-                ? "text-gray-900 dark:text-gray-100 font-medium px-1"
-                : "hover:text-primary-500 dark:hover:text-primary-400 px-1 transition-colors"
-            }
           >
             {c.name}
-          </button>
-        </span>
-      ))}
-    </nav>
+          </Link>
+        )
+      )}
+    </MuiBreadcrumbs>
   );
 }

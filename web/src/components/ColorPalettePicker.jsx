@@ -1,39 +1,64 @@
-import { CheckIcon } from "@heroicons/react/20/solid";
-import { usePalette, PRESETS } from "../hooks/usePalette.js";
+import { Box, ButtonBase, Typography } from "@mui/material";
+import CheckIcon from "@mui/icons-material/Check";
+import { usePalette, PRESETS } from "../hooks/usePalette.jsx";
 
 export default function ColorPalettePicker() {
   const { palette, selectPreset } = usePalette();
 
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1 }}>
       {PRESETS.map((p) => {
         const active =
           palette.primary.toLowerCase() === p.primary.toLowerCase() &&
           palette.secondary.toLowerCase() === p.secondary.toLowerCase();
         return (
-          <button
+          <ButtonBase
             key={p.name}
             onClick={() => selectPreset(p)}
             aria-pressed={active}
-            className={`relative flex flex-col items-center gap-1.5 p-2 rounded-lg border transition-colors ${
-              active
-                ? "border-primary-500 bg-primary-500/10"
-                : "border-transparent hover:bg-gray-100 dark:hover:bg-base-800"
-            }`}
+            sx={{
+              position: "relative",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 0.75,
+              p: 1,
+              borderRadius: 2,
+              border: 1,
+              borderColor: active ? "primary.main" : "transparent",
+              bgcolor: active ? "action.selected" : "transparent",
+              "&:hover": { bgcolor: "action.hover" },
+            }}
           >
-            <span className="w-full h-8 rounded-md overflow-hidden flex">
-              <span className="w-1/2 h-full" style={{ backgroundColor: p.primary }} />
-              <span className="w-1/2 h-full" style={{ backgroundColor: p.secondary }} />
-            </span>
-            <span className="text-xs text-center leading-tight">{p.name}</span>
+            <Box sx={{ width: "100%", height: 32, borderRadius: 1, overflow: "hidden", display: "flex" }}>
+              <Box sx={{ width: "50%", height: "100%", bgcolor: p.primary }} />
+              <Box sx={{ width: "50%", height: "100%", bgcolor: p.secondary }} />
+            </Box>
+            <Typography variant="caption" sx={{ textAlign: "center", lineHeight: 1.2 }}>
+              {p.name}
+            </Typography>
             {active && (
-              <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-primary-500 text-white flex items-center justify-center">
-                <CheckIcon className="w-3 h-3" />
-              </span>
+              <Box
+                sx={{
+                  position: "absolute",
+                  top: 4,
+                  right: 4,
+                  width: 16,
+                  height: 16,
+                  borderRadius: "50%",
+                  bgcolor: "primary.main",
+                  color: "primary.contrastText",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <CheckIcon sx={{ fontSize: 12 }} />
+              </Box>
             )}
-          </button>
+          </ButtonBase>
         );
       })}
-    </div>
+    </Box>
   );
 }

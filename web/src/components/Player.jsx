@@ -2,14 +2,25 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import Plyr from "plyr";
 import "plyr/dist/plyr.css";
 import {
-  XMarkIcon,
-  BackwardIcon,
-  ForwardIcon,
-  InformationCircleIcon,
-  TvIcon,
-  ArrowsRightLeftIcon,
-  QuestionMarkCircleIcon,
-} from "@heroicons/react/20/solid";
+  Alert,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  LinearProgress,
+  Tooltip,
+} from "@mui/material";
+import { useTheme as useMuiTheme } from "@mui/material/styles";
+import CloseIcon from "@mui/icons-material/Close";
+import SkipPreviousIcon from "@mui/icons-material/SkipPrevious";
+import SkipNextIcon from "@mui/icons-material/SkipNext";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import TvIcon from "@mui/icons-material/Tv";
+import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutlineOutlined";
 import { streamUrl, flipPreviewUrl, setProgress } from "../api.js";
 import { formatDuration, formatBytes } from "../format.js";
 import { useTheaterMode } from "../hooks/useTheaterMode.js";
@@ -67,6 +78,7 @@ const SHORTCUT_GROUPS = [
 ];
 
 export default function Player({ video, siblings, flipJob, onClose, onNavigate, onStartFlip, onKeepFlip, onDiscardFlip }) {
+  const muiTheme = useMuiTheme();
   const containerRef = useRef(null);
   const videoElRef = useRef(null);
   const playerRef = useRef(null);
@@ -249,6 +261,16 @@ export default function Player({ video, siblings, flipJob, onClose, onNavigate, 
         }
         return;
       }
+      // Without this, Escape falls through to the "close player" case below
+      // instead of just dismissing the confirm dialog (Dialog's own Escape
+      // handling covers the same key, but this stops it reaching that case).
+      if (confirmFlipOpen) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setConfirmFlipOpen(false);
+        }
+        return;
+      }
       const active = document.activeElement;
       const tag = active?.tagName;
       const isFormField = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
@@ -353,7 +375,7 @@ export default function Player({ video, siblings, flipJob, onClose, onNavigate, 
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [goPrev, goNext, onClose, showHint, requestFlip, showShortcuts]);
+  }, [goPrev, goNext, onClose, showHint, requestFlip, showShortcuts, confirmFlipOpen]);
 
   // macOS trackpad gestures: two-finger horizontal swipe seeks, vertical
   // swipe adjusts volume. The player container has nothing to natively
@@ -403,74 +425,65 @@ export default function Player({ video, siblings, flipJob, onClose, onNavigate, 
     : `${streamUrl(video.id)}${reloadKey ? `?v=${reloadKey}` : ""}`;
 
   return (
-    <div ref={containerRef} className="player-shell fixed inset-0 bg-black z-50 flex flex-col text-gray-100">
+    <div
+      ref={containerRef}
+      className="player-shell fixed inset-0 bg-black flex flex-col text-gray-100"
+      style={{ zIndex: muiTheme.zIndex.player }}
+    >
       {!isFullscreen && (
-        <div className="flex items-center justify-between px-4 py-2 bg-base-900/90 text-sm">
-          <div className="flex items-center gap-3 min-w-0">
-            <button
-              onClick={onClose}
-              className="text-gray-300 hover:text-white p-1.5 rounded hover:bg-base-700"
-              title="Close (Esc)"
-              aria-label="Close player"
-            >
-              <XMarkIcon className="w-5 h-5" />
-            </button>
+        <div className="flex items-center justify-between px-2 py-1 bg-base-900/90 text-sm text-gray-100">
+          <div className="flex items-center gap-2 min-w-0">
+            <Tooltip title="Close (Esc)">
+              <IconButton onClick={onClose} color="inherit" aria-label="Close player">
+                <CloseIcon />
+              </IconButton>
+            </Tooltip>
             <span className="truncate font-medium" title={video.name}>
               {video.name.replace(/\.[^.]+$/, "")}
             </span>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <button
-              onClick={goPrev}
-              disabled={!hasPrev}
-              className="p-1.5 rounded hover:bg-base-700 disabled:opacity-30"
-              title="Previous ([)"
-              aria-label="Previous video"
-            >
-              <BackwardIcon className="w-5 h-5" />
-            </button>
-            <button
-              onClick={goNext}
-              disabled={!hasNext}
-              className="p-1.5 rounded hover:bg-base-700 disabled:opacity-30"
-              title="Next (])"
-              aria-label="Next video"
-            >
-              <ForwardIcon className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setShowInfo((v) => !v)}
-              className="p-1.5 rounded hover:bg-base-700"
-              title="Info (i)"
-              aria-label="File info"
-            >
-              <InformationCircleIcon className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setTheater((v) => !v)}
-              className="p-1.5 rounded hover:bg-base-700"
-              title="Theater (t)"
-              aria-label="Theater mode"
-            >
-              <TvIcon className="w-5 h-5" />
-            </button>
-            <button
-              onClick={requestFlip}
-              disabled={flipJob?.status === "running" || flipJob?.status === "ready"}
-              className="p-1.5 rounded hover:bg-base-700 disabled:opacity-30"
-              title="Flip horizontal - preview before it replaces the file (h)"
-              aria-label="Flip horizontal"
-            >
-              <ArrowsRightLeftIcon className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setShowShortcuts(true)}
-              className="p-1.5 rounded hover:bg-base-700"
-              title="Keyboard shortcuts (?)"
-              aria-label="Keyboard shortcuts"
-            >
-              <QuestionMarkCircleIcon className="w-5 h-5" />
-            </button>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <Tooltip title="Previous ([)">
+              <span>
+                <IconButton onClick={goPrev} disabled={!hasPrev} color="inherit" aria-label="Previous video">
+                  <SkipPreviousIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="Next (])">
+              <span>
+                <IconButton onClick={goNext} disabled={!hasNext} color="inherit" aria-label="Next video">
+                  <SkipNextIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="Info (i)">
+              <IconButton onClick={() => setShowInfo((v) => !v)} color="inherit" aria-label="File info">
+                <InfoOutlinedIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Theater (t)">
+              <IconButton onClick={() => setTheater((v) => !v)} color="inherit" aria-label="Theater mode">
+                <TvIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Flip horizontal - preview before it replaces the file (h)">
+              <span>
+                <IconButton
+                  onClick={requestFlip}
+                  disabled={flipJob?.status === "running" || flipJob?.status === "ready"}
+                  color="inherit"
+                  aria-label="Flip horizontal"
+                >
+                  <SwapHorizIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="Keyboard shortcuts (?)">
+              <IconButton onClick={() => setShowShortcuts(true)} color="inherit" aria-label="Keyboard shortcuts">
+                <HelpOutlineIcon />
+              </IconButton>
+            </Tooltip>
           </div>
         </div>
       )}
@@ -520,11 +533,13 @@ export default function Player({ video, siblings, flipJob, onClose, onNavigate, 
 
         {flipJob?.status === "running" && (
           <div className="absolute inset-0 bg-black/85 flex flex-col items-center justify-center gap-3 text-sm px-6">
-            <div className="w-8 h-8 border-2 border-secondary-400 border-t-transparent rounded-full animate-spin" />
+            <CircularProgress color="secondary" size={32} />
             <p>Flipping video{flipJob.progress != null ? ` - ${flipJob.progress}%` : "…"}</p>
-            <div className="w-64 h-1.5 bg-base-700 rounded overflow-hidden">
-              <div className="h-full bg-primary-500 transition-all" style={{ width: `${flipJob.progress ?? 0}%` }} />
-            </div>
+            <LinearProgress
+              variant={flipJob.progress != null ? "determinate" : "indeterminate"}
+              value={flipJob.progress ?? 0}
+              sx={{ width: 256, borderRadius: 1 }}
+            />
             <p className="text-gray-400 text-center">
               Building a flipped copy to preview - the original is untouched. You can close this
               player and watch other videos; it'll keep running in the background.
@@ -533,117 +548,107 @@ export default function Player({ video, siblings, flipJob, onClose, onNavigate, 
         )}
 
         {flipJob?.status === "error" && !errorDismissed && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-red-900/90 text-red-100 px-4 py-2 rounded-md text-sm max-w-md text-center">
+          <Alert
+            severity="error"
+            variant="filled"
+            onClose={() => setErrorDismissed(true)}
+            sx={{ position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)", maxWidth: 400 }}
+          >
             Flip failed: {flipJob.error}
-            <button onClick={() => setErrorDismissed(true)} className="ml-3 underline">
-              Dismiss
-            </button>
-          </div>
+          </Alert>
         )}
 
         {previewingFlip && (
-          <div className="absolute bottom-0 left-0 right-0 bg-base-900/95 border-t border-base-700 px-4 py-3 flex items-center justify-between gap-3 text-sm">
+          <div className="absolute bottom-0 left-0 right-0 bg-base-900/95 border-t border-base-700 px-4 py-3 flex items-center justify-between gap-3 text-sm text-gray-100">
             <span>
               Previewing flipped version - the original file hasn't changed yet.
             </span>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <button onClick={handleDiscard} className="px-3 py-1.5 rounded hover:bg-base-700">
+              <Button onClick={handleDiscard} color="inherit">
                 Discard
-              </button>
-              <button
-                onClick={handleKeep}
-                className="px-3 py-1.5 rounded bg-primary-500 hover:bg-primary-400 text-white"
-              >
+              </Button>
+              <Button onClick={handleKeep} variant="contained">
                 Keep this version
-              </button>
+              </Button>
             </div>
           </div>
         )}
       </div>
 
-      {showShortcuts && (
-        <div
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60]"
-          onClick={() => setShowShortcuts(false)}
-        >
-          <div
-            className="bg-base-900 rounded-lg w-full max-w-lg p-5 max-h-[80vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold">Keyboard shortcuts</h3>
-              <button
-                onClick={() => setShowShortcuts(false)}
-                className="text-gray-400 hover:text-white p-1.5 rounded hover:bg-base-800"
-                aria-label="Close"
-              >
-                <XMarkIcon className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
-              {SHORTCUT_GROUPS.map((group) => (
-                <div key={group.title}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
-                    {group.title}
-                  </p>
-                  <div className="space-y-1.5">
-                    {group.items.map(([alternatives, label]) => (
-                      <div key={label} className="flex items-center justify-between gap-3 text-sm">
-                        <span className="text-gray-300">{label}</span>
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {alternatives.map((combo, i) => (
-                            <span key={i} className="flex items-center gap-1">
-                              {i > 0 && <span className="text-gray-500 text-xs">or</span>}
-                              {combo.map((k, j) => (
-                                <span key={j} className="flex items-center gap-0.5">
-                                  {j > 0 && <span className="text-gray-500 text-xs">+</span>}
-                                  <kbd className="inline-flex items-center justify-center min-w-[1.65rem] h-6 px-1.5 rounded-md border border-base-600 bg-base-800 text-xs font-mono text-gray-200">
-                                    {k}
-                                  </kbd>
-                                </span>
-                              ))}
-                            </span>
-                          ))}
-                        </div>
+      <Dialog
+        open={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
+        maxWidth="md"
+        fullWidth
+        sx={{ zIndex: (t) => t.zIndex.playerOverlay }}
+        slotProps={{ paper: { sx: { bgcolor: "#121215", color: "#fff" } } }}
+      >
+        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", color: "#fff" }}>
+          Keyboard shortcuts
+          <IconButton onClick={() => setShowShortcuts(false)} color="inherit" aria-label="Close" size="small">
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ borderColor: "rgba(255,255,255,0.12)" }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
+            {SHORTCUT_GROUPS.map((group) => (
+              <div key={group.title}>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                  {group.title}
+                </p>
+                <div className="space-y-1.5">
+                  {group.items.map(([alternatives, label]) => (
+                    <div key={label} className="flex items-center justify-between gap-3 text-sm">
+                      <span className="text-gray-300">{label}</span>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {alternatives.map((combo, i) => (
+                          <span key={i} className="flex items-center gap-1">
+                            {i > 0 && <span className="text-gray-500 text-xs">or</span>}
+                            {combo.map((k, j) => (
+                              <span key={j} className="flex items-center gap-0.5">
+                                {j > 0 && <span className="text-gray-500 text-xs">+</span>}
+                                <kbd className="inline-flex items-center justify-center min-w-[1.65rem] h-6 px-1.5 rounded-md border border-base-600 bg-base-800 text-xs font-mono text-gray-200">
+                                  {k}
+                                </kbd>
+                              </span>
+                            ))}
+                          </span>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
-      {confirmFlipOpen && (
-        <div
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60]"
-          onClick={() => setConfirmFlipOpen(false)}
-        >
-          <div className="bg-base-900 rounded-lg w-full max-w-sm p-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-base font-semibold mb-2">Flip horizontal?</h3>
-            <p className="text-sm text-gray-400 mb-4">
-              This builds a mirrored copy you can preview first - the original file isn't touched
-              until you choose to keep it. Re-encoding can take a while for large files, and you can
-              keep watching other videos while it runs in the background.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setConfirmFlipOpen(false)}
-                className="px-3 py-1.5 rounded text-sm hover:bg-base-700"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmFlip}
-                className="px-3 py-1.5 rounded text-sm bg-primary-500 hover:bg-primary-400 text-white"
-              >
-                Build flipped preview
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={confirmFlipOpen}
+        onClose={() => setConfirmFlipOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        sx={{ zIndex: (t) => t.zIndex.playerOverlay }}
+        slotProps={{ paper: { sx: { bgcolor: "#121215", color: "#fff" } } }}
+      >
+        <DialogTitle sx={{ color: "#fff" }}>Flip horizontal?</DialogTitle>
+        <DialogContent dividers sx={{ borderColor: "rgba(255,255,255,0.12)" }}>
+          <p className="text-sm text-gray-400">
+            This builds a mirrored copy you can preview first - the original file isn't touched
+            until you choose to keep it. Re-encoding can take a while for large files, and you can
+            keep watching other videos while it runs in the background.
+          </p>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmFlipOpen(false)} color="inherit">
+            Cancel
+          </Button>
+          <Button onClick={confirmFlip} variant="contained">
+            Build flipped preview
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }

@@ -1,5 +1,19 @@
 import { useState } from "react";
-import { PlusIcon } from "@heroicons/react/20/solid";
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  List,
+  ListItem,
+  ListItemText,
+  Tab,
+  Tabs,
+  Typography,
+} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
 import { addDirectory, removeDirectory } from "../api.js";
 import FolderPicker from "./FolderPicker.jsx";
 import ColorPalettePicker from "./ColorPalettePicker.jsx";
@@ -43,72 +57,63 @@ export default function SettingsModal({ roots, onClose, onChange }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-40" onClick={onClose}>
-      <div className="bg-gray-50 dark:bg-base-900 rounded-lg w-full max-w-md p-4" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-semibold">Settings</h3>
-          <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-base-800 rounded p-0.5">
+    <>
+      <Dialog open onClose={onClose} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+          Settings
+          <Tabs value={tab} onChange={(e, v) => setTab(v)}>
             {TABS.map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                className={`px-2.5 py-1 rounded text-sm transition-colors ${
-                  tab === t.key
-                    ? "bg-primary-500 text-white"
-                    : "text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
-                }`}
-              >
-                {t.label}
-              </button>
+              <Tab key={t.key} value={t.key} label={t.label} sx={{ minHeight: 48 }} />
             ))}
-          </div>
-        </div>
-
-        {tab === "folders" ? (
-          <>
-            {error && <p className="text-red-600 dark:text-red-400 text-sm mb-2">{error}</p>}
-            <ul className="space-y-1 mb-4 max-h-60 overflow-y-auto">
-              {roots.length === 0 && <li className="text-gray-500 text-sm">No folders added yet.</li>}
-              {roots.map((r) => (
-                <li key={r.path} className="flex items-center justify-between gap-2 px-2 py-1.5 rounded bg-gray-100 dark:bg-base-800">
-                  <span className="text-sm truncate" title={r.path}>
-                    {r.display}
-                  </span>
-                  <button
-                    onClick={() => handleRemove(r.path)}
-                    disabled={busy}
-                    className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 text-sm px-1 flex-shrink-0"
+          </Tabs>
+        </DialogTitle>
+        <DialogContent dividers>
+          {tab === "folders" ? (
+            <>
+              {error && (
+                <Typography variant="body2" color="error" sx={{ mb: 1 }}>
+                  {error}
+                </Typography>
+              )}
+              <List dense sx={{ maxHeight: 240, overflowY: "auto" }}>
+                {roots.length === 0 && (
+                  <Typography variant="body2" color="text.secondary">
+                    No folders added yet.
+                  </Typography>
+                )}
+                {roots.map((r) => (
+                  <ListItem
+                    key={r.path}
+                    sx={{ bgcolor: "action.hover", borderRadius: 1, mb: 0.5 }}
+                    secondaryAction={
+                      <Button onClick={() => handleRemove(r.path)} disabled={busy} color="error" size="small">
+                        Remove
+                      </Button>
+                    }
                   >
-                    Remove
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : (
-          <div className="mb-4">
+                    <ListItemText primary={r.display} slotProps={{ primary: { noWrap: true, title: r.path } }} />
+                  </ListItem>
+                ))}
+              </List>
+            </>
+          ) : (
             <ColorPalettePicker />
-          </div>
-        )}
-
-        <div className="flex justify-between items-center">
-          <div>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: "space-between" }}>
+          <Box>
             {tab === "folders" && (
-              <button
-                onClick={() => setPicking(true)}
-                className="flex items-center gap-1 px-3 py-1.5 rounded text-sm bg-primary-500 hover:bg-primary-400 text-white"
-              >
-                <PlusIcon className="w-4 h-4" />
+              <Button onClick={() => setPicking(true)} startIcon={<AddIcon />} variant="contained">
                 Add folder
-              </button>
+              </Button>
             )}
-          </div>
-          <button onClick={onClose} className="px-3 py-1.5 rounded text-sm hover:bg-gray-200 dark:hover:bg-base-700">
+          </Box>
+          <Button onClick={onClose} color="inherit">
             Done
-          </button>
-        </div>
-      </div>
+          </Button>
+        </DialogActions>
+      </Dialog>
       {picking && <FolderPicker onSelect={handleAdd} onClose={() => setPicking(false)} />}
-    </div>
+    </>
   );
 }

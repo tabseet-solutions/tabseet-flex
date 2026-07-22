@@ -1,11 +1,23 @@
 import {
-  BarsArrowUpIcon,
-  BarsArrowDownIcon,
-  Square2StackIcon,
-  Cog6ToothIcon,
-  SunIcon,
-  MoonIcon,
-} from "@heroicons/react/20/solid";
+  AppBar,
+  ButtonBase,
+  IconButton,
+  InputAdornment,
+  MenuItem,
+  TextField,
+  Toolbar,
+  ToggleButton,
+  ToggleButtonGroup,
+  Tooltip,
+  Typography,
+} from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
+import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import SettingsIcon from "@mui/icons-material/Settings";
+import LightModeIcon from "@mui/icons-material/LightMode";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
 
 export default function TopBar({
   search,
@@ -23,77 +35,83 @@ export default function TopBar({
   onToggleTheme,
 }) {
   return (
-    <header className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-base-900 border-b border-gray-200 dark:border-base-800 sticky top-0 z-30">
-      <button onClick={onHome} className="text-lg font-semibold flex items-center gap-2 flex-shrink-0">
-        <img src="/favicon.svg" alt="" className="w-7 h-7" />
-        Tabseet Flex
-      </button>
-      <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-base-800 rounded p-0.5 flex-shrink-0">
-        {[
-          { key: "folders", label: "Folders" },
-          { key: "consolidated", label: "Consolidated" },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => onChangeView(tab.key)}
-            className={`px-2.5 py-1 rounded text-sm transition-colors ${
-              view === tab.key
-                ? "bg-primary-500 text-white"
-                : "text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-      <input
-        value={search}
-        onChange={(e) => onSearchChange(e.target.value)}
-        placeholder={view === "consolidated" ? "Search entire library..." : "Search this folder..."}
-        className="flex-1 max-w-md bg-gray-100 dark:bg-base-800 rounded px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary-500"
-      />
-      <select
-        value={sort}
-        onChange={(e) => onSortChange(e.target.value)}
-        className="bg-gray-100 dark:bg-base-800 rounded px-2 py-1.5 text-sm outline-none"
-      >
-        <option value="name">Name</option>
-        <option value="date">Date</option>
-        <option value="duration">Duration</option>
-        <option value="size">Size</option>
-      </select>
-      <button
-        onClick={() => onOrderChange(order === "asc" ? "desc" : "asc")}
-        className="p-1.5 rounded bg-gray-100 hover:bg-gray-200 dark:bg-base-800 dark:hover:bg-base-700 transition-colors"
-        title="Toggle sort order"
-        aria-label="Toggle sort order"
-      >
-        {order === "asc" ? <BarsArrowUpIcon className="w-5 h-5" /> : <BarsArrowDownIcon className="w-5 h-5" />}
-      </button>
-      <button
-        onClick={onDuplicates}
-        className="p-1.5 rounded bg-gray-100 hover:bg-gray-200 dark:bg-base-800 dark:hover:bg-base-700 transition-colors"
-        title="Find duplicate videos across library folders"
-        aria-label="Find duplicate videos"
-      >
-        <Square2StackIcon className="w-5 h-5" />
-      </button>
-      <button
-        onClick={onToggleTheme}
-        className="p-1.5 rounded bg-gray-100 hover:bg-gray-200 dark:bg-base-800 dark:hover:bg-base-700 transition-colors"
-        title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-        aria-label="Toggle color theme"
-      >
-        {theme === "dark" ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
-      </button>
-      <button
-        onClick={onSettings}
-        className="p-1.5 rounded bg-gray-100 hover:bg-gray-200 dark:bg-base-800 dark:hover:bg-base-700 transition-colors"
-        title="Settings"
-        aria-label="Settings"
-      >
-        <Cog6ToothIcon className="w-5 h-5" />
-      </button>
-    </header>
+    <AppBar
+      position="sticky"
+      color="default"
+      elevation={0}
+      sx={{ borderBottom: 1, borderColor: "divider" }}
+    >
+      <Toolbar sx={{ gap: 1.5 }}>
+        <ButtonBase onClick={onHome} sx={{ gap: 1, borderRadius: 1, flexShrink: 0 }}>
+          <img src="/favicon.svg" alt="" width={28} height={28} />
+          <Typography variant="h6" component="span" sx={{ fontWeight: 600 }}>
+            Tabseet Flex
+          </Typography>
+        </ButtonBase>
+
+        <ToggleButtonGroup
+          value={view}
+          exclusive
+          onChange={(e, next) => next && onChangeView(next)}
+          size="small"
+          sx={{ flexShrink: 0 }}
+        >
+          <ToggleButton value="folders">Folders</ToggleButton>
+          <ToggleButton value="consolidated">Consolidated</ToggleButton>
+        </ToggleButtonGroup>
+
+        <TextField
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder={view === "consolidated" ? "Search entire library..." : "Search this folder..."}
+          sx={{ flex: 1, maxWidth: 400 }}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            },
+          }}
+        />
+
+        <TextField
+          select
+          value={sort}
+          onChange={(e) => onSortChange(e.target.value)}
+          sx={{ minWidth: 120 }}
+        >
+          <MenuItem value="name">Name</MenuItem>
+          <MenuItem value="date">Date</MenuItem>
+          <MenuItem value="duration">Duration</MenuItem>
+          <MenuItem value="size">Size</MenuItem>
+        </TextField>
+
+        <Tooltip title="Toggle sort order">
+          <IconButton onClick={() => onOrderChange(order === "asc" ? "desc" : "asc")} aria-label="Toggle sort order">
+            {order === "asc" ? <ArrowUpwardIcon /> : <ArrowDownwardIcon />}
+          </IconButton>
+        </Tooltip>
+
+        <Tooltip title="Find duplicate videos across library folders">
+          <IconButton onClick={onDuplicates} aria-label="Find duplicate videos">
+            <ContentCopyIcon />
+          </IconButton>
+        </Tooltip>
+
+        <Tooltip title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
+          <IconButton onClick={onToggleTheme} aria-label="Toggle color theme">
+            {theme === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
+          </IconButton>
+        </Tooltip>
+
+        <Tooltip title="Settings">
+          <IconButton onClick={onSettings} aria-label="Settings">
+            <SettingsIcon />
+          </IconButton>
+        </Tooltip>
+      </Toolbar>
+    </AppBar>
   );
 }

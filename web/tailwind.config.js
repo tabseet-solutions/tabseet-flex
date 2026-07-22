@@ -2,6 +2,10 @@
 export default {
   darkMode: "class",
   content: ["./index.html", "./src/**/*.{js,jsx}"],
+  // MUI's CssBaseline (mounted in src/theme/AppThemeProvider.jsx) owns the
+  // global CSS reset now that every raw <button>/<input> has been migrated
+  // to an MUI component - disabled here to avoid two resets fighting.
+  corePlugins: { preflight: false },
   theme: {
     extend: {
       colors: {

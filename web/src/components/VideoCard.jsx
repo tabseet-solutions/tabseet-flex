@@ -1,7 +1,49 @@
-import { PlayIcon } from "@heroicons/react/24/solid";
+import { Box, Card, CardActionArea, LinearProgress, Typography } from "@mui/material";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import { thumbUrl } from "../api.js";
 import { formatDuration } from "../format.js";
 import { useThumbnail } from "../hooks/useThumbnail.js";
+
+// Hoisted out of the component - none of these depend on props/state, so
+// building them fresh per card would mean per-card allocations across what
+// can be a large grid.
+const cardSx = { overflow: "hidden" };
+const thumbBoxSx = { position: "relative", width: "100%", aspectRatio: "16 / 9", bgcolor: "action.hover", overflow: "hidden" };
+const thumbImgSx = { width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.2s" };
+const hoverOverlaySx = {
+  position: "absolute",
+  inset: 0,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  bgcolor: "rgba(0,0,0,0.3)",
+  transition: "opacity 0.15s",
+};
+const playIconSx = { fontSize: 48, color: "#fff", filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.6))" };
+const durationBadgeSx = {
+  position: "absolute",
+  bottom: 4,
+  right: 4,
+  px: 0.75,
+  py: 0.25,
+  fontSize: 12,
+  bgcolor: "rgba(0,0,0,0.75)",
+  color: "#fff",
+  borderRadius: 0.5,
+};
+const volumeBadgeSx = {
+  position: "absolute",
+  top: 4,
+  left: 4,
+  px: 0.75,
+  py: 0.25,
+  fontSize: 12,
+  bgcolor: "rgba(0,0,0,0.75)",
+  color: "secondary.light",
+  borderRadius: 0.5,
+};
+const watchProgressSx = { position: "absolute", bottom: 0, left: 0, right: 0, height: 4, bgcolor: "rgba(0,0,0,0.5)" };
+const titleBoxSx = { px: 1.5, py: 1 };
 
 export default function VideoCard({ video, onPlay, volume }) {
   const watchPct =
@@ -11,43 +53,25 @@ export default function VideoCard({ video, onPlay, volume }) {
   const [thumbRef, thumbSrc] = useThumbnail(thumbUrl(video.id));
 
   return (
-    <button
-      onClick={() => onPlay(video)}
-      data-grid-item="true"
-      className="group relative flex flex-col rounded-lg overflow-hidden bg-gray-100 dark:bg-base-800 hover:ring-2 hover:ring-primary-500 transition-all text-left focus:outline-none focus:ring-2 focus:ring-primary-500"
-    >
-      <div ref={thumbRef} className="relative w-full aspect-video bg-gray-200 dark:bg-base-700 overflow-hidden">
-        {thumbSrc && (
-          <img
-            src={thumbSrc}
-            alt={video.name}
-            className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-          />
-        )}
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/30 transition-opacity">
-          <PlayIcon className="w-12 h-12 text-white drop-shadow-lg" />
-        </div>
-        {video.duration > 0 && (
-          <span className="absolute bottom-1 right-1 px-1.5 py-0.5 text-xs bg-black/75 rounded">
-            {formatDuration(video.duration)}
-          </span>
-        )}
-        {volume && (
-          <span className="absolute top-1 left-1 px-1.5 py-0.5 text-xs bg-black/75 rounded text-secondary-400">
-            {volume}
-          </span>
-        )}
-        {watchPct > 0 && (
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/50">
-            <div className="h-full bg-primary-500" style={{ width: `${watchPct}%` }} />
-          </div>
-        )}
-      </div>
-      <div className="px-2 py-1.5">
-        <p className="text-sm truncate" title={video.name}>
-          {video.name.replace(/\.[^.]+$/, "")}
-        </p>
-      </div>
-    </button>
+    <Card variant="outlined" sx={cardSx} className="group">
+      <CardActionArea onClick={() => onPlay(video)} data-grid-item="true">
+        <Box ref={thumbRef} sx={thumbBoxSx}>
+          {thumbSrc && (
+            <Box component="img" src={thumbSrc} alt={video.name} className="group-hover:scale-105" sx={thumbImgSx} />
+          )}
+          <Box className="opacity-0 group-hover:opacity-100" sx={hoverOverlaySx}>
+            <PlayArrowIcon sx={playIconSx} />
+          </Box>
+          {video.duration > 0 && <Box sx={durationBadgeSx}>{formatDuration(video.duration)}</Box>}
+          {volume && <Box sx={volumeBadgeSx}>{volume}</Box>}
+          {watchPct > 0 && <LinearProgress variant="determinate" value={watchPct} sx={watchProgressSx} />}
+        </Box>
+        <Box sx={titleBoxSx}>
+          <Typography variant="body2" noWrap title={video.name}>
+            {video.name.replace(/\.[^.]+$/, "")}
+          </Typography>
+        </Box>
+      </CardActionArea>
+    </Card>
   );
 }

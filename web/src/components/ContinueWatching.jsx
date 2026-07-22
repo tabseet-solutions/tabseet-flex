@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { Box, Typography } from "@mui/material";
 import VideoCard from "./VideoCard.jsx";
 
 export default function ContinueWatching({ items, onPlay }) {
@@ -40,9 +41,11 @@ export default function ContinueWatching({ items, onPlay }) {
   };
 
   return (
-    <section className="mb-6">
-      <h2 className="text-lg font-semibold mb-2">Continue Watching</h2>
-      <div
+    <Box component="section" sx={{ mb: 3 }}>
+      <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+        Continue Watching
+      </Typography>
+      <Box
         ref={scrollRef}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -50,14 +53,15 @@ export default function ContinueWatching({ items, onPlay }) {
         onPointerCancel={stopDrag}
         onPointerLeave={stopDrag}
         onClickCapture={onClickCapture}
-        className="flex gap-3 overflow-x-auto pb-1 cursor-grab active:cursor-grabbing select-none"
+        className="cursor-grab active:cursor-grabbing select-none"
+        sx={{ display: "flex", gap: 1.5, overflowX: "auto", pb: 0.5 }}
       >
         {items.map((v) => (
-          <div key={v.id} className="w-36 sm:w-44 md:w-48 lg:w-52 flex-shrink-0">
+          <Box key={v.id} className="w-36 sm:w-44 md:w-48 lg:w-52" sx={{ flexShrink: 0 }}>
             <VideoCard video={v} onPlay={() => onPlay(v, items)} />
-          </div>
+          </Box>
         ))}
-      </div>
-    </section>
+      </Box>
+    </Box>
   );
 }

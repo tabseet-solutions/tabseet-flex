@@ -87,6 +87,7 @@ router.get("/:id", async (req, res, next) => {
       duration: meta.duration,
       width: meta.width,
       height: meta.height,
+      size: meta.size,
       progress,
     });
   } catch (err) {

@@ -1,13 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Backdrop, CircularProgress, Link } from "@mui/material";
 import TopBar from "./components/TopBar.jsx";
 import Breadcrumbs from "./components/Breadcrumbs.jsx";
 import FolderCard from "./components/FolderCard.jsx";
 import VideoCard from "./components/VideoCard.jsx";
 import ContinueWatching from "./components/ContinueWatching.jsx";
-import SettingsModal from "./components/SettingsModal.jsx";
-import Player from "./components/Player.jsx";
 import FlipStatusBar from "./components/FlipStatusBar.jsx";
-import DuplicatesModal from "./components/DuplicatesModal.jsx";
+
+// Only mounted on demand (see settingsOpen/duplicatesOpen/player below) -
+// lazy-loading these keeps them, and Player's Plyr dependency, out of the
+// initial bundle entirely.
+const SettingsModal = lazy(() => import("./components/SettingsModal.jsx"));
+const DuplicatesModal = lazy(() => import("./components/DuplicatesModal.jsx"));
+const Player = lazy(() => import("./components/Player.jsx"));
 import {
   getDirectories,
   getLibrary,
@@ -20,7 +25,13 @@ import {
   discardFlip as apiDiscardFlip,
 } from "./api.js";
 import { pauseThumbnailLoading, resumeThumbnailLoading } from "./lib/thumbnailLoader.js";
-import { useTheme } from "./hooks/useTheme.js";
+import { useTheme } from "./hooks/useTheme.jsx";
+
+const lazyFallback = (
+  <Backdrop open sx={{ zIndex: (t) => t.zIndex.modal, color: "#fff" }}>
+    <CircularProgress color="inherit" />
+  </Backdrop>
+);
 
 export default function App() {
   const [theme, toggleTheme] = useTheme();
@@ -395,9 +406,9 @@ export default function App() {
             {roots.length === 0 ? (
               <div className="text-gray-500 dark:text-gray-400 text-sm">
                 No library folders yet.{" "}
-                <button className="text-primary-500 dark:text-primary-400 underline" onClick={() => setSettingsOpen(true)}>
+                <Link component="button" underline="hover" onClick={() => setSettingsOpen(true)}>
                   Add one
-                </button>
+                </Link>
                 .
               </div>
             ) : (
@@ -443,27 +454,39 @@ export default function App() {
         )}
       </main>
 
+      {/* Each lazy component gets its own Suspense boundary - a shared one
+          would unmount an already-loaded modal (discarding its state) while
+          a sibling's chunk loads, e.g. opening the Player via FlipStatusBar's
+          Preview button while Settings is still open behind it. */}
       {settingsOpen && (
-        <SettingsModal
-          roots={roots}
-          onClose={() => setSettingsOpen(false)}
-          onChange={loadRoots}
-        />
+        <Suspense fallback={lazyFallback}>
+          <SettingsModal
+            roots={roots}
+            onClose={() => setSettingsOpen(false)}
+            onChange={loadRoots}
+          />
+        </Suspense>
       )}
 
-      {duplicatesOpen && <DuplicatesModal onClose={() => setDuplicatesOpen(false)} />}
+      {duplicatesOpen && (
+        <Suspense fallback={lazyFallback}>
+          <DuplicatesModal onClose={() => setDuplicatesOpen(false)} />
+        </Suspense>
+      )}
 
       {player && (
-        <Player
-          video={player.video}
-          siblings={player.siblings}
-          flipJob={activeFlips[player.video.id] || null}
-          onClose={handleClosePlayer}
-          onNavigate={(v) => setPlayer({ video: v, siblings: player.siblings })}
-          onStartFlip={handleStartFlip}
-          onKeepFlip={handleKeepFlip}
-          onDiscardFlip={handleDiscardFlip}
-        />
+        <Suspense fallback={lazyFallback}>
+          <Player
+            video={player.video}
+            siblings={player.siblings}
+            flipJob={activeFlips[player.video.id] || null}
+            onClose={handleClosePlayer}
+            onNavigate={(v) => setPlayer({ video: v, siblings: player.siblings })}
+            onStartFlip={handleStartFlip}
+            onKeepFlip={handleKeepFlip}
+            onDiscardFlip={handleDiscardFlip}
+          />
+        </Suspense>
       )}
 
       <FlipStatusBar

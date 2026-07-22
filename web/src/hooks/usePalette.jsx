@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { buildPaletteVars } from "../lib/color.js";
 
 const STORAGE_KEY = "palette";
@@ -39,10 +39,12 @@ function applyPalette(palette) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...palette, vars }));
 }
 
+const PaletteContext = createContext(null);
+
 // Mirrors the inline script in index.html that applies the stored palette's
 // CSS variables before paint - this just keeps it in sync with React state
-// afterward (see useTheme.js for the same pattern applied to dark/light mode).
-export function usePalette() {
+// afterward (see useTheme.jsx for the same pattern applied to dark/light mode).
+export function PaletteProvider({ children }) {
   const [palette, setPalette] = useState(getInitialPalette);
 
   useEffect(() => {
@@ -50,6 +52,18 @@ export function usePalette() {
   }, [palette]);
 
   const selectPreset = useCallback(({ primary, secondary }) => setPalette({ primary, secondary }), []);
+  // Stable reference so a palette-unrelated re-render of PaletteProvider
+  // (e.g. ThemeProvider toggling above it) doesn't also force every
+  // PaletteContext consumer to re-render.
+  const value = useMemo(() => ({ palette, selectPreset }), [palette, selectPreset]);
 
-  return { palette, selectPreset };
+  return <PaletteContext.Provider value={value}>{children}</PaletteContext.Provider>;
+}
+
+// Single shared instance (see PaletteProvider above) so every consumer -
+// including the MUI theme in src/theme - stays in sync with the same picker.
+export function usePalette() {
+  const ctx = useContext(PaletteContext);
+  if (!ctx) throw new Error("usePalette must be used within a PaletteProvider");
+  return ctx;
 }
